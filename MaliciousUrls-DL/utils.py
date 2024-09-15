@@ -22,13 +22,13 @@ def load_data(malicious_path, benign_path):
     urls = []
     labels = []
 
-    with open(malicious_path) as f:
+    with open(malicious_path, 'r', encoding='utf-8') as f:
         for line in f.readlines():
             url = split_url(line)
             urls.append(url)
             labels.append(1)
 
-    with open(benign_path) as f:
+    with open(benign_path, 'r', encoding='utf-8') as f:
         for line in f.readlines():
             url = split_url(line)
             urls.append(url)
