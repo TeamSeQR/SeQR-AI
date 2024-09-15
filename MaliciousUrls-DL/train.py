@@ -86,22 +86,15 @@ FLAGS = vars(parser.parse_args())
 
 for key, value in FLAGS.items():
     print("{}={}".format(key, value))
-print("Loading data...")
+
 urls, labels = utils.load_data(FLAGS["data.malicious_data"], FLAGS["data.benign_data"])
-print("Data loaded. Processing vocabulary...")
 
 x, word_reverse_dict = utils.get_word_vocabulary(urls, FLAGS["data.max_tokens"], FLAGS["data.max_len_words"]) 
-print("Word vocabulary built.")
-
 word_x = utils.get_words(x, word_reverse_dict, urls)
-print("Words extracted from URLs.")
-
 ngramed_id_x, ngrams_dict, worded_id_x, words_dict = utils.ngram_id_x(word_x, FLAGS["data.max_len_subwords"])
-print("N-gram IDs generated.")
 
 chars_dict = ngrams_dict
 chared_id_x = utils.char_id_x(urls, chars_dict, FLAGS["data.max_len_chars"])
-print("Character IDs generated.")
 
 pos_x = []
 neg_x = []
@@ -115,11 +108,8 @@ print("Overall Malicious/Benign split: {}/{}".format(len(pos_x), len(neg_x)))
 pos_x = np.array(pos_x) 
 neg_x = np.array(neg_x) 
 
-print("Preparing train/test split...")
 x_train, y_train, x_test, y_test = utils.prep_train_test(pos_x, neg_x, FLAGS["data.dev_pct"])
-print("Train/test split prepared.")
 
-print("Generating n-gram IDs for training data...")
 x_train_char = utils.get_ngramed_id_x(x_train, ngramed_id_x) 
 x_test_char = utils.get_ngramed_id_x(x_test, ngramed_id_x) 
 
@@ -128,11 +118,9 @@ x_test_word = utils.get_ngramed_id_x(x_test, worded_id_x)
 
 x_train_char_seq = utils.get_ngramed_id_x(x_train, chared_id_x)
 x_test_char_seq = utils.get_ngramed_id_x(x_test, chared_id_x)
-print("N-gram IDs for training data generated.")
 
 # Training
 def train_dev_step(x, y, emb_mode, is_train=True):
-    print("Starting train/dev step...")
     if is_train: 
         p = 0.5
     else: 
@@ -172,11 +160,9 @@ def train_dev_step(x, y, emb_mode, is_train=True):
         _, step, loss, acc = sess.run([train_op, global_step, cnn.loss, cnn.accuracy], feed_dict)
     else: 
         step, loss, acc = sess.run([global_step, cnn.loss, cnn.accuracy], feed_dict)
-    print(f"Step {step}, Loss: {loss}, Accuracy: {acc}")
     return step, loss, acc
 
 def make_batches(x_train_char_seq, x_train_word, x_train_char, y_train, batch_size, nb_epochs, shuffle=False):
-    print("Generating batches...")
     if FLAGS["model.emb_mode"] == 1:  
         batch_data = list(zip(x_train_char_seq, y_train))
     elif FLAGS["model.emb_mode"] == 2:  
@@ -189,7 +175,6 @@ def make_batches(x_train_char_seq, x_train_word, x_train_char, y_train, batch_si
         batch_data = list(zip(x_train_char, x_train_word, x_train_char_seq, y_train))
     batches = utils.batch_iter(batch_data, batch_size, nb_epochs, shuffle)
 
-    print("Batches generated.")
     if nb_epochs > 1: 
         nb_batches_per_epoch = int(len(batch_data)/batch_size)
         if len(batch_data)%batch_size != 0:
@@ -200,7 +185,6 @@ def make_batches(x_train_char_seq, x_train_word, x_train_char, y_train, batch_si
         return batches 
 
 def prep_batches(batch):
-    print("Preparing batches...")
     if FLAGS["model.emb_mode"] == 1:
         x_char_seq, y_batch = zip(*batch)
     elif FLAGS["model.emb_mode"] == 2:
@@ -227,7 +211,6 @@ def prep_batches(batch):
             FLAGS["model.emb_dim"]
         )
         x_batch.extend([x_char, x_char_pad_idx])
-    print("Batches prepared.")
     return x_batch, y_batch
 
 with tf.Graph().as_default(): 
@@ -236,7 +219,6 @@ with tf.Graph().as_default():
     sess = tf.compat.v1.Session(config=session_conf) 
 
     with sess.as_default():  
-        print("Building the model...")
         cnn = unet.UrlNet(
             char_ngram_vocab_size = len(ngrams_dict) + 1, 
             word_ngram_vocab_size = len(words_dict) + 1,
@@ -248,19 +230,15 @@ with tf.Graph().as_default():
             mode = FLAGS["model.emb_mode"],
             filter_sizes = list(map(int, FLAGS["model.filter_sizes"].split(",")))
         )
-        print("Model built.")
 
         global_step = tf.Variable(0, name="global_step", trainable=False) 
         optimizer = tf.compat.v1.train.AdamOptimizer(FLAGS["train.lr"]) 
         grads_and_vars = optimizer.compute_gradients(cnn.loss)
         train_op = optimizer.apply_gradients(grads_and_vars, global_step=global_step) 
-        print("Optimizer configured and gradients computed.")
         
-        print("Setting up directories and log files...")
         print("Writing to {}\n".format(FLAGS["log.output_dir"]))
         if not os.path.exists(FLAGS["log.output_dir"]): 
             os.makedirs(FLAGS["log.output_dir"])
-        print("Output directories created.")
         
         # Save dictionary files 
         ngrams_dict_dir = FLAGS["log.output_dir"] + "subwords_dict.pickle"
@@ -269,7 +247,6 @@ with tf.Graph().as_default():
         pickle.dump(words_dict, open(words_dict_dir, "wb"))
         chars_dict_dir = FLAGS["log.output_dir"] + "chars_dict.pickle"
         pickle.dump(chars_dict, open(chars_dict_dir, "wb"))
-        print("Dictionaries saved.")
         
         # Save training and validation logs 
         train_log_dir = FLAGS["log.output_dir"] + "train_logs.csv"
@@ -278,7 +255,6 @@ with tf.Graph().as_default():
         val_log_dir = FLAGS["log.output_dir"] + "val_logs.csv"
         with open(val_log_dir, "w")  as f:
             f.write("step,time,loss,acc\n")
-        print("Log files created.")
 
         # Save model checkpoints 
         checkpoint_dir = FLAGS["log.output_dir"] + "checkpoints/" 
@@ -286,12 +262,9 @@ with tf.Graph().as_default():
             os.makedirs(checkpoint_dir) 
         checkpoint_prefix = checkpoint_dir + "model"
         saver = tf.compat.v1.train.Saver(tf.compat.v1.global_variables(), max_to_keep=5) 
-        print("Checkpoint directories set up.")
         
         sess.run(tf.compat.v1.global_variables_initializer())
-        print("Session initialized and global variables initialized.")
 
-        print("Generating batches...")
         train_batches, nb_batches_per_epoch, nb_batches = make_batches(
             x_train_char_seq, 
             x_train_word, 
@@ -301,7 +274,6 @@ with tf.Graph().as_default():
             FLAGS['train.nb_epochs'], 
             True
         )
-        print("Batches generated.")
         
         min_dev_loss = float('Inf') 
         dev_loss = float('Inf')
@@ -318,13 +290,9 @@ with tf.Graph().as_default():
             ncols = 0
         )
         for idx in it:
-            if idx % FLAGS["log.print_every"] == 0:  # 특정 간격으로만 출력
-                print(f"Processing batch {idx + 1}/{nb_batches}...")
             batch = next(train_batches)
             x_batch, y_batch = prep_batches(batch) 
-            step, loss, acc = train_dev_step(x_batch, y_batch, emb_mode=FLAGS["model.emb_mode"], is_train=True)    
-            print(f"Batch {idx + 1}/{nb_batches} processed. Step: {step}, Loss: {loss:.3e}, Accuracy: {acc:.3e}")
-                              
+            step, loss, acc = train_dev_step(x_batch, y_batch, emb_mode=FLAGS["model.emb_mode"], is_train=True)                      
             if step % FLAGS["log.print_every"] == 0: 
                 with open(train_log_dir, "a") as f:
                     f.write("{:d},{:s},{:e},{:e}\n".format(step, datetime.datetime.now().isoformat(), loss, acc)) 
@@ -355,13 +323,7 @@ with tf.Graph().as_default():
                 dev_acc = nb_corrects / nb_instances 
                 with open(val_log_dir, "a") as f: 
                     f.write("{:d},{:s},{:e},{:e}\n".format(step, datetime.datetime.now().isoformat(), dev_loss, dev_acc))
-                print(f"Model evaluation completed. Dev Loss: {dev_loss:.3e}, Dev Accuracy: {dev_acc:.3e}")
-                    
-                    
                 if step % FLAGS["log.checkpoint_every"] == 0 or idx == (nb_batches-1): 
                     if dev_loss < min_dev_loss: 
-                        print("Saving model checkpoint...")
                         path = saver.save(sess, checkpoint_prefix, global_step=step) 
-                        print(f"Model checkpoint saved at step {step} to {path}.")
                         min_dev_loss = dev_loss
-print("Training process completed.")
