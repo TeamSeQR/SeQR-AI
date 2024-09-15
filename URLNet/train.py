@@ -33,9 +33,11 @@ parser.add_argument('--data.min_word_freq', type=int, default=default_min_word_f
 default_dev_pct = 0.001
 parser.add_argument('--data.dev_pct', type=float, default=default_dev_pct, metavar="DEVPCT",
   help="percentage of training set used for dev (default: {})".format(default_dev_pct))
+
 parser.add_argument('--data.data_dir', type=str, default='train_10000.txt', metavar="DATADIR",
   help="location of data file")
 default_delimit_mode = 1 
+
 parser.add_argument("--data.delimit_mode", type=int, default=default_delimit_mode, metavar="DLMODE",
   help="0: delimit by special chars, 1: delimit by special chars + each char as a word (default: {})".format(default_delimit_mode))
 

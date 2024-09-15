@@ -307,8 +307,13 @@ def prep_train_test(pos_x, neg_x, dev_pct):
     x_test = np.array(list(pos_test) + list(neg_test))
     y_test = len(pos_test)*[1] + len(neg_test)*[0]
 
+    """to_categorical() 함수의 사용 방식이 잘못
     y_train = to_categorical(y_train, nb_classes=2)
     y_test = to_categorical(y_test, nb_classes=2) 
+    """
+    y_train = to_categorical(y_train, num_classes=2)
+    y_test = to_categorical(y_test, num_classes=2)
+
 
     np.random.seed(10)
     shuffle_indices = np.random.permutation(np.arange(len(x_train)))
