@@ -4,8 +4,10 @@ import numpy as np
 from collections import defaultdict
 from bisect import bisect_left 
 import tensorflow as tf 
-from tflearn.data_utils import to_categorical 
-from tensorflow.contrib import learn 
+# 기존: from tflearn.data_utils import to_categorical 
+from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.preprocessing.text import Tokenizer  # Updated Import
+from tensorflow.keras.preprocessing.sequence import pad_sequences  # New Import
 
 def read_data(file_dir): 
     with open(file_dir) as file: 
@@ -99,6 +101,16 @@ def split_url(line, part):
         return primarydomain, pathtoken, argument, sub_dir, filename, file_extension
 
 def get_word_vocab(urls, max_length_words, min_word_freq=0): 
+    # 기존 VocabularyProcessor 대신 Tokenizer 사용
+    tokenizer = Tokenizer(oov_token="<OOV>")  # OOV 처리 추가
+    tokenizer.fit_on_texts(urls)
+    x = tokenizer.texts_to_sequences(urls)  # URL을 시퀀스로 변환
+    x = pad_sequences(x, maxlen=max_length_words)  # 시퀀스 패딩
+    word_index = tokenizer.word_index
+    reverse_dict = {v: k for k, v in word_index.items()}  # 인덱스-단어 사전 반전
+    print(f"Finished building vocabulary. Size of word vocabulary: {len(reverse_dict)}")
+    return x, reverse_dict
+    """
     vocab_processor = learn.preprocessing.VocabularyProcessor(max_length_words, min_frequency=min_word_freq) 
     start = time.time() 
     x = np.array(list(vocab_processor.fit_transform(urls)))
@@ -107,6 +119,8 @@ def get_word_vocab(urls, max_length_words, min_word_freq=0):
     reverse_dict = dict(zip(vocab_dict.values(), vocab_dict.keys()))
     print("Size of word vocabulary: {}".format(len(reverse_dict)))
     return x, reverse_dict 
+    """
+    
 
 def get_words(x, reverse_dict, delimit_mode, urls=None): 
     processed_x = []
