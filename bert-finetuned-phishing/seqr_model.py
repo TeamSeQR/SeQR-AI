@@ -19,11 +19,8 @@ from transformers import pipeline
 
 pipe = pipeline("text-classification", model="ealvaradob/bert-finetuned-phishing")
 
-from google.colab import drive
-drive.mount('/content/drive')
-
-# Google Drive에 저장된 파일 경로
-ROOT_DIR = "/content/drive/MyDrive/졸업프로젝트팀/인지대 공모전/data"
+# 레포에 저장된 파일 경로
+ROOT_DIR = "../custom_datasets"
 
 # 텍스트 파일을 DataFrame으로 로드
 df = pd.read_csv(os.path.join(ROOT_DIR, 'combined_phishing_data.txt'), header=None, delimiter='\t', names=['label', 'URL'])
