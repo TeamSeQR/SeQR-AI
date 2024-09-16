@@ -1,32 +1,59 @@
 from llama_cpp import Llama
+import os
 import torch
 
 # 로컬 GGUF 모델 파일 경로
 model_path = "./Llama-3.1-8B-Instruct-Phishing-Classification.i1-Q4_K_M.gguf"
 
-# 모델 로드
-llm = Llama(model_path=model_path, n_ctx=4096, n_threads=8)
+# 경로 존재 여부 확인을 위한 로그 추가
+print(f"모델 파일 경로: {model_path}")
+if not os.path.exists(model_path):
+    print("오류: 모델 파일 경로가 존재하지 않습니다.")
+    print("현재 작업 디렉토리:", os.getcwd())
+    print("디렉토리 내용:", os.listdir(os.path.dirname(model_path) or "."))
+    exit(1)
 
-# URL 입력 받기
-input_text = input("확인할 URL을 입력하세요: ")
+try:
+    # 모델 로드
+    print("모델 로드 시도 중...")
+    llm = Llama(model_path=model_path, n_ctx=8192, n_threads=8, low_vmem=True)
+    print("모델 로드 성공.")
+except ValueError as e:
+    print(f"모델 로드 실패: {e}")
+    exit(1)
 
-# 시스템 메시지와 사용자 입력을 포맷팅
-prompt = f"<s>System: You are a helpful assistant that detects phishing websites.</s>\n<s>Human: {input_text}</s>\n<s>Assistant:"
+while True:
+    # URL 입력 받기
+    input_text = input("확인할 URL을 입력하세요 (종료하려면 /bye 입력): ")
 
-# 모델 추론 수행
-output = llm(prompt, max_tokens=128, stop=["</s>"])
+    # 종료 명령 확인
+    if input_text.strip().lower() == "/bye":
+        print("프로그램을 종료합니다.")
+        break
 
-# 출력된 텍스트 추출
-generated_text = output['choices'][0]['text']
+    # 시스템 메시지와 사용자 입력을 포맷팅
+    prompt = f"<s>System: You are a helpful assistant that detects phishing websites and calculates the probability of a URL being a phishing site.</s>\n<s>Human: The URL is {input_text}. What is the probability that this is a phishing site? Provide your reasoning.</s>\n<s>Assistant:"
 
-# 로그 출력값 및 확률 계산
-# `llama-cpp-python`에서 logits을 직접적으로 구할 수는 없으나, 아래는 출력된 텍스트의 기본 출력
-print("Generated Text:", generated_text)
+    try:
+        # 모델 추론 수행
+        print("모델 추론 수행 중...")
+        output = llm(prompt, max_tokens=512, stop=["</s>"])
+        generated_text = output['choices'][0]['text']
 
-# 만약 확률 계산이 가능하다면, 여기에 확률 변환 코드 추가
-# 이 예시에서는 softmax를 사용해 직접적으로 logits을 계산하는 부분은 생략했습니다.
-# 모델이 텍스트 생성 기반일 때 로그 확률을 제공하는지 확인 필요
+        # 결과 출력
+        print("Generated Text:", generated_text)
 
-# 로그 출력값과 확률을 유사하게 출력하도록 작성
-print("Logits: 로그 출력값을 직접적으로 제공하지 않음 (모델 출력 기반)")
-print("Probabilities: 확률 변환을 위한 추가 계산이 필요")
+        # 추가로, 로그 출력값 및 확률 계산
+        logits = output['choices'][0].get('logits', None)
+        if logits:
+            # 피싱 확률 계산 (임의의 가중치로 설정)
+            probabilities = torch.nn.functional.softmax(torch.tensor(logits), dim=0)
+            phishing_probability = probabilities[0].item() * 100  # 첫 번째 항목의 확률을 퍼센티지로 변환
+
+            print(f"피싱 사이트일 확률: {phishing_probability:.2f}%")
+            print("판단:", generated_text)
+        else:
+            print("추론 결과에서 확률을 계산할 수 없습니다.")
+
+    except Exception as e:
+        print(f"모델 추론 중 오류 발생: {e}")
