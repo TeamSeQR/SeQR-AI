@@ -22,8 +22,13 @@ pipe = pipeline("text-classification", model="ealvaradob/bert-finetuned-phishing
 # 레포에 저장된 파일 경로
 ROOT_DIR = "../custom_datasets"
 
+## 피싱 데이터
+
 # 텍스트 파일을 DataFrame으로 로드
-df = pd.read_csv(os.path.join(ROOT_DIR, 'combined_phishing_data.txt'), header=None, delimiter='\t', names=['label', 'URL'])
+df = pd.read_csv(os.path.join(ROOT_DIR, 'result/combined_phishing_data.txt'), header=None, delimiter='\t', names=['label', 'URL'])
+
+# 상위 100개의 행만 처리
+df = df.head(100)
 
 # 'label' 컬럼 이름을 '실제 피싱 여부'로 변경
 df.rename(columns={'label': 'Actual'}, inplace=True)
@@ -42,6 +47,8 @@ df['Prediction Score'] = [f"{result['score'] * 100:.2f} %" for result in results
 
 # DataFrame을 CSV로 저장
 df.to_csv(os.path.join(ROOT_DIR, 'combined_phishing_data_with_results_bert.csv'), index=False)
+
+## 정상 데이터
 
 # 텍스트 파일을 DataFrame으로 로드
 df = pd.read_csv(os.path.join(ROOT_DIR, 'combined_benign_data.txt'), header=None, delimiter='\t', names=['label', 'URL'])
