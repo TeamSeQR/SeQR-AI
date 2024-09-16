@@ -65,5 +65,5 @@ df['Predicted Label'] = [result['label'] for result in results]
 df['Prediction Score'] = [f"{result['score'] * 100:.2f} %" for result in results]
 
 # DataFrame을 CSV로 저장
-df.to_csv(os.path.join(ROOT_DIR, 'combined_benign_data_with_results_bert.csv'), index=False)
+df.to_csv(os.path.join(ROOT_DIR, 'result/combined_benign_data_with_results_bert.csv'), index=False)
 
