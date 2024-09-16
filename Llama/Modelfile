@@ -1,0 +1,23 @@
+# 모델 파일 정의
+
+# 베이스 모델 지정
+FROM Llama-3.1-8B-Instruct-Phishing-Classification.i1-Q4_K_M.gguf
+
+# 템플릿 정의
+TEMPLATE """{{- if .System }}
+<s>{{ .System }}</s>
+{{- end }}
+<s>Human:
+{{ .Prompt }}</s>
+<s>Assistant:
+"""
+
+# 시스템 메시지 설정
+SYSTEM """A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions."""
+
+# 모델 파라미터 설정
+PARAMETER temperature 0
+PARAMETER num_predict 3000
+PARAMETER num_ctx 4096
+PARAMETER stop <s>
+PARAMETER stop </s>

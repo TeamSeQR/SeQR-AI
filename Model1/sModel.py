@@ -13,8 +13,8 @@ sess = onnxruntime.InferenceSession(
 )
 
 urls = [
-    "https://clubedemilhagem.com/home.php",
-    "http://www.medicalnewstoday.com/articles/188939.php",
+    "oabe.fyy8.plus", "mp.fnb4.media","http://gilo.iszty.skin","http://han.gl/UwxiZ", "http://sn6d.senlo.plus",
+    "on17.er30.love","yang.jeyrg.beauty","qq.com", "https://amazon.com", "taobao.com","twitter.com","tmall.com"
 ]
 inputs = np.array(urls, dtype="str")
 
