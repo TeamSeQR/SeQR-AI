@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+from keras.layers import Embedding
 
 
 class UrlNet(object):
@@ -22,37 +23,60 @@ class UrlNet(object):
             self.input_x_word = tf.keras.Input(name="input_x_word", shape=(None, ), dtype=tf.int32)
         if mode == 1 or mode == 3 or mode == 5:
             self.input_x_char_seq = tf.keras.Input(name="input_x_char_seq", shape=(None, ), dtype=tf.int32)
-        self.input_y = tf.keras.Input(name="input_y", shape=(2), dtype=tf.float32)
+        self.input_y = tf.keras.Input(name="input_y", shape=(2,), dtype=tf.float32) # tuple 형태로 저장해서, 다차원 배열 처리하도록
         self.dropout_keep_prob = tf.compat.v1.placeholder(name="dropout_keep_prob", dtype=tf.float32)
 
         l2_loss = tf.constant(0.0)
         with tf.name_scope("embedding"):
-            initializer = tf.random_uniform_initializer(minval=-1.0, maxval=1.0)
+            # Keras Embedding layers for different input modes
+            #initializer = tf.random_uniform_initializer(minval=-1.0, maxval=1.0)
             if mode == 4 or mode == 5:
-                self.char_w = tf.Variable(initializer(shape=[char_ngram_vocab_size, embedding_size]), name="char_emb_w")
-            if mode == 2 or mode == 3 or mode == 4 or mode == 5:
-                self.word_w = tf.Variable(initial_value = initializer(shape=[word_ngram_vocab_size, embedding_size]), name="word_emb_w")
-            if mode == 1 or mode == 3 or mode == 5:
-                self.char_seq_w = tf.Variable(initializer(shape=[char_vocab_size, embedding_size]), name="char_seq_emb_w")
-            
-            if mode == 4 or mode == 5:
-                self.embedded_x_char = tf.nn.embedding_lookup(self.char_w, self.input_x_char)
+                #self.char_w = tf.Variable(initializer(shape=[char_ngram_vocab_size, embedding_size]), name="char_emb_w")
+                self.char_embedding_layer = Embedding(input_dim=char_ngram_vocab_size, output_dim=embedding_size, name="char_embedding")
+                self.embedded_x_char = self.char_embedding_layer(self.input_x_char)
                 self.embedded_x_char = tf.multiply(self.embedded_x_char, self.input_x_char_pad_idx)
+                
             if mode == 2 or mode == 3 or mode == 4 or mode == 5:
-                self.embedded_x_word = tf.nn.embedding_lookup(self.word_w, self.input_x_word)
+                #self.word_w = tf.Variable(initial_value = initializer(shape=[word_ngram_vocab_size, embedding_size]), name="word_emb_w")
+                self.word_embedding_layer = Embedding(input_dim=word_ngram_vocab_size, output_dim=embedding_size, name="word_embedding")
+                self.embedded_x_word = self.word_embedding_layer(self.input_x_word)
             if mode == 1 or mode == 3 or mode == 5:
-                self.embedded_x_char_seq = tf.nn.embedding_lookup(self.char_seq_w, self.input_x_char_seq)
+                #self.char_seq_w = tf.Variable(initializer(shape=[char_vocab_size, embedding_size]), name="char_seq_emb_w")
+                self.char_seq_embedding_layer = Embedding(input_dim=char_vocab_size, output_dim=embedding_size, name="char_seq_embedding")
+                self.embedded_x_char_seq = self.char_seq_embedding_layer(self.input_x_char_seq)
 
+            # Sum and expand dimensions for different modes
             if mode == 4 or mode == 5:
+                #self.embedded_x_char = tf.nn.embedding_lookup(self.char_w, self.input_x_char)
+                #self.embedded_x_char = tf.multiply(self.embedded_x_char, self.input_x_char_pad_idx)
                 self.sum_ngram_x_char = tf.math.reduce_sum(self.embedded_x_char, 2)
                 self.sum_ngram_x = tf.math.add(self.sum_ngram_x_char, self.embedded_x_word)
-            
+                
             if mode == 4 or mode == 5:
                 self.sum_ngram_x_expanded = tf.expand_dims(self.sum_ngram_x, -1)
             if mode == 2 or mode == 3:
                 self.sum_ngram_x_expanded = tf.expand_dims(self.embedded_x_word, -1)
             if mode == 1 or mode == 3 or mode == 5:
                 self.char_x_expanded = tf.expand_dims(self.embedded_x_char_seq, -1)
+                
+            """
+            if mode == 2 or mode == 3 or mode == 4 or mode == 5:
+                    self.embedded_x_word = tf.nn.embedding_lookup(self.word_w, self.input_x_word)
+                if mode == 1 or mode == 3 or mode == 5:
+                    self.embedded_x_char_seq = tf.nn.embedding_lookup(self.char_seq_w, self.input_x_char_seq)
+
+                if mode == 4 or mode == 5:
+                    self.sum_ngram_x_char = tf.math.reduce_sum(self.embedded_x_char, 2)
+                    self.sum_ngram_x = tf.math.add(self.sum_ngram_x_char, self.embedded_x_word)
+                
+                if mode == 4 or mode == 5:
+                    self.sum_ngram_x_expanded = tf.expand_dims(self.sum_ngram_x, -1)
+                if mode == 2 or mode == 3:
+                    self.sum_ngram_x_expanded = tf.expand_dims(self.embedded_x_word, -1)
+                if mode == 1 or mode == 3 or mode == 5:
+                    self.char_x_expanded = tf.expand_dims(self.embedded_x_char_seq, -1)
+            """
+            
         
         # Word convolution layer
         if mode == 2 or mode == 3 or mode == 4 or mode == 5:
