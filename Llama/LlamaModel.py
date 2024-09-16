@@ -1,6 +1,7 @@
 from llama_cpp import Llama
 import os
 import torch
+import re
 
 # 로컬 GGUF 모델 파일 경로
 model_path = "./Llama-3.1-8B-Instruct-Phishing-Classification.i1-Q4_K_M.gguf"
@@ -31,29 +32,31 @@ while True:
         print("프로그램을 종료합니다.")
         break
 
-    # 시스템 메시지와 사용자 입력을 포맷팅
-    prompt = f"<s>System: You are a helpful assistant that detects phishing websites and calculates the probability of a URL being a phishing site.</s>\n<s>Human: The URL is {input_text}. What is the probability that this is a phishing site? Provide your reasoning.</s>\n<s>Assistant:"
+    # 시스템 메시지와 사용자 입력을 JSON 형식으로 대답하도록 제한
+    prompt = f"""<s>System: You are a helpful assistant that detects phishing websites and calculates the probability of a URL being a phishing site. 
+    Answer in the following JSON format: {{ "probability": 0.XX, "reason": "..." }}</s>\n<s>Human: The URL is {input_text}. What is the probability that this is a phishing site? Provide your reasoning.</s>\n<s>Assistant:"""
 
     try:
         # 모델 추론 수행
         print("모델 추론 수행 중...")
         output = llm(prompt, max_tokens=512, stop=["</s>"])
-        generated_text = output['choices'][0]['text']
-
-        # 결과 출력
+        generated_text = output if isinstance(output, str) else output['choices'][0]['text']
         print("Generated Text:", generated_text)
 
-        # 추가로, 로그 출력값 및 확률 계산
-        logits = output['choices'][0].get('logits', None)
-        if logits:
-            # 피싱 확률 계산 (임의의 가중치로 설정)
-            probabilities = torch.nn.functional.softmax(torch.tensor(logits), dim=0)
-            phishing_probability = probabilities[0].item() * 100  # 첫 번째 항목의 확률을 퍼센티지로 변환
-
+        # 정규 표현식을 사용하여 확률 값 추출
+        match = re.search(r'"probability":\s*0\.(\d+)', generated_text)
+        if match:
+            phishing_probability = float(f"0.{match.group(1)}") * 100  # 확률을 퍼센티지로 변환
             print(f"피싱 사이트일 확률: {phishing_probability:.2f}%")
-            print("판단:", generated_text)
         else:
-            print("추론 결과에서 확률을 계산할 수 없습니다.")
+            print("피싱 사이트일 확률을 계산할 수 없습니다.")
+
+        # 이유 출력
+        match_reason = re.search(r'"reason":\s*"([^"]+)"', generated_text)
+        if match_reason:
+            print("판단 이유:", match_reason.group(1))
+        else:
+            print("판단 이유를 찾을 수 없습니다.")
 
     except Exception as e:
         print(f"모델 추론 중 오류 발생: {e}")
