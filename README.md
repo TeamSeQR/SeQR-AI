@@ -5,6 +5,17 @@ AI machine learning model for SeQR
 
 - 24.09.15 - 진행중
 
+## Version Requirements - myenv
+tensorflow==2.12.0
+keras==2.12.0
+transformers==4.31.0
+Python 3.10
+scikit-learn
+pandas
+pytorch
+
+
+
 ## 📝 규칙
 
 #### 커밋 컨벤션
