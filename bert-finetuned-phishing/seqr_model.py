@@ -94,7 +94,7 @@ def load_and_prepare_data(root_dir, n_samples=10000):
 
     return train_texts, val_texts, train_labels, val_labels
 
-def train_model(train_texts, train_labels, val_texts, val_labels, epochs=3, batch_size=4, model=None):
+def train_model(train_texts, train_labels, val_texts, val_labels, epochs=3, batch_size=16, model=None):
     """
     모델을 훈련하고 검증 세트 성능을 출력합니다.
     """
