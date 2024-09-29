@@ -34,19 +34,26 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '0'  # 디버그 수준으로 로그 출력
 ROOT_DIR = "../custom_datasets"
 MODEL_DIR = './saved_model'
 TOKENIZER_DIR = './saved_tokenizer'
-"""
+
 # GPU 사용 가능한지 확인
 gpus = tf.config.list_physical_devices('GPU')
-if gpus:
+if not gpus:
+    response = input("GPU를 찾을 수 없습니다. CPU로 계속 실행하시겠습니까? (y/n): ").strip().lower()
+    if response != 'y':
+        print("프로그램을 종료합니다.")
+        exit()  # 사용자가 'n' 또는 다른 답을 입력하면 프로그램 종료
+    else:
+        print("CPU로 실행합니다.")
+else:
     try:
         for gpu in gpus:
             tf.config.experimental.set_memory_growth(gpu, True)
         print(f"GPU 사용 가능: {len(gpus)} GPUs")
     except RuntimeError as e:
-        print(e)
-else:
-    print("GPU를 찾을 수 없습니다. DirectML로 실행합니다.")
-"""
+        print(f"GPU 설정 중 오류 발생: {e}")
+        exit()  # GPU 설정 오류 시 프로그램 종료
+
+
 
 def load_and_prepare_data(root_dir, n_samples=10000):
     """

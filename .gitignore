@@ -1,5 +1,8 @@
 venv/
 .venv/
 myenv/
-Llama/Llama-3.1-8B-Instruct-Phishing-Classification.i1-Q4_K_M.gguf
+Llama/Llama-3.1-8B-Instruct-Phishing-Classification.i1-Q4_K_M.gguf/
 #bert-finetuned-phishing/saved_model/tf_model.h5
+*.run
+cuda_12.6.1_560.35.03_linux.run.2
+cuda_12.6.1_560.35.03_linux.run.1
