@@ -13,6 +13,14 @@ Python 3.10
 scikit-learn
 pandas
 pytorch
+git LFS
+
+# 참고 - LFS 파일을 다운로드하는 방법
+프로젝트를 복제할 때, LFS 파일을 자동으로 다운로드하려면 다음과 같이 Git LFS를 설치해야 합니다. 일반적으로 git clone 명령을 실행하면 LFS 파일도 함께 다운로드되지만, git lfs install 명령으로 LFS를 활성화해야만 해당 파일을 제대로 다운로드할 수 있습니다.
+
+git clone https://github.com/TeamSeQR/SeQR-AI.git
+git lfs install
+git lfs pull
 
 
 
