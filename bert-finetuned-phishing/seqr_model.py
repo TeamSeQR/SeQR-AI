@@ -20,16 +20,33 @@ from sklearn.model_selection import train_test_split
 from transformers import pipeline,AutoTokenizer, TFAutoModelForSequenceClassification
 import tensorflow as tf
 from tensorflow.keras.optimizers import Adam
+import torch
+#from tensorflow_directml import load
 
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '0'  # 디버그 수준으로 로그 출력
+
 
 # 데이터 경로 설정
 ROOT_DIR = "../custom_datasets"
 MODEL_DIR = './saved_model'
 TOKENIZER_DIR = './saved_tokenizer'
+"""
+# GPU 사용 가능한지 확인
+gpus = tf.config.list_physical_devices('GPU')
+if gpus:
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        print(f"GPU 사용 가능: {len(gpus)} GPUs")
+    except RuntimeError as e:
+        print(e)
+else:
+    print("GPU를 찾을 수 없습니다. DirectML로 실행합니다.")
+"""
 
 def load_and_prepare_data(root_dir, n_samples=10000):
     """

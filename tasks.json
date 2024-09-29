@@ -1,0 +1,22 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "build",
+        "command": "g++",
+        "args": [
+          "-I", "C:/Program Files/NVIDIA/CUDNN/v9.4/include",  // cuDNN include 경로
+          "-L", "C:/Program Files/NVIDIA/CUDNN/v9.4/lib",      // cuDNN lib 경로
+          "-lcudnn",                                            // cuDNN 라이브러리 링크
+          "main.cpp",
+          "-o",
+          "output.exe"
+        ],
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        }
+      }
+    ]
+  }
+  
