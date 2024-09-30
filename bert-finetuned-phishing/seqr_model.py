@@ -17,6 +17,7 @@ from tensorflow.keras.optimizers import Adam
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from torch.optim import AdamW
+from tqdm import tqdm
 #from tensorflow_directml import load
 
 
@@ -109,7 +110,7 @@ def load_and_prepare_data(root_dir, n_samples=10000):
     return train_texts, val_texts, train_labels, val_labels
 """
 
-def load_and_prepare_data(root_dir, n_samples=10000):
+def load_and_prepare_data(root_dir, n_samples=5000):
     """
     데이터를 로드하고 전처리하여 훈련 및 검증 세트를 반환합니다.
     """
@@ -230,7 +231,7 @@ def train_model(train_texts, train_labels, val_texts, val_labels, epochs=3, batc
     return model, tokenizer
 """
 
-def train_model(train_texts, train_labels, val_texts, val_labels, epochs=3, batch_size=8):
+def train_model(train_texts, train_labels, val_texts, val_labels, epochs=3, batch_size=4, model=None):
     """
     모델을 훈련하고 검증 세트 성능을 출력합니다.
     """
@@ -245,8 +246,12 @@ def train_model(train_texts, train_labels, val_texts, val_labels, epochs=3, batc
     val_encodings = tokenizer(val_texts, truncation=True, padding=True, return_tensors='pt')
 
     # PyTorch 데이터셋 생성
-    train_dataset = TensorDataset(train_encodings['input_ids'], torch.tensor(train_labels))
-    val_dataset = TensorDataset(val_encodings['input_ids'], torch.tensor(val_labels))
+    #train_dataset = TensorDataset(train_encodings['input_ids'], torch.tensor(train_labels))
+    #val_dataset = TensorDataset(val_encodings['input_ids'], torch.tensor(val_labels))
+
+    # PyTorch 데이터셋 생성 시 attention_mask 포함
+    train_dataset = TensorDataset(train_encodings['input_ids'], train_encodings['attention_mask'], torch.tensor(train_labels))
+    val_dataset = TensorDataset(val_encodings['input_ids'], val_encodings['attention_mask'], torch.tensor(val_labels))
 
     # DataLoader 생성
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
@@ -261,19 +266,38 @@ def train_model(train_texts, train_labels, val_texts, val_labels, epochs=3, batc
     # 옵티마이저 설정
     optimizer = AdamW(model.parameters(), lr=5e-5)
 
+    # Gradient Accumulation 설정
+    accumulation_steps = 4  # 4번의 작은 배치 후에 한 번의 업데이트
+
     # 모델 학습
-    model.train()
+    model.train() # 위치??
     for epoch in range(epochs):
-        for batch in train_loader:
-            optimizer.zero_grad()
+        optimizer.zero_grad() # 경사 초기화
+        epoch_loss = 0
+        for i, batch in enumerate(tqdm(train_loader, desc=f"Epoch {epoch + 1}/{epochs}")):
             inputs = batch[0].to(device)
-            labels = batch[1].to(device)
-            outputs = model(inputs, labels=labels)
+            attention_mask = batch[1].to(device)  # attention_mask 추가
+            labels = batch[2].to(device)
+
+            # forward pass
+            outputs = model(input_ids=inputs, attention_mask=attention_mask, labels=labels)
             loss = outputs.loss
             loss.backward()
-            optimizer.step()
 
-        logger.info(f"에포크 {epoch+1}/{epochs} - 손실: {loss.item()}")
+            epoch_loss += loss.item()  # 누적 손실 계산
+
+             # 경사 누적 후 optimizer 업데이트
+            if (i + 1) % accumulation_steps == 0:
+                optimizer.step()
+                optimizer.zero_grad()  # 경사 초기화
+
+            #optimizer.step()
+
+            # GPU 메모리 캐시 정리
+            torch.cuda.empty_cache()
+
+        #logger.info(f"에포크 {epoch+1}/{epochs} - 손실: {loss.item()}")
+        logger.info(f"에포크 {epoch+1}/{epochs} - 손실: {epoch_loss / len(train_loader):.4f}")
 
     # 검증 세트 평가
     model.eval()
@@ -282,8 +306,17 @@ def train_model(train_texts, train_labels, val_texts, val_labels, epochs=3, batc
     with torch.no_grad():
         for batch in val_loader:
             inputs = batch[0].to(device)
-            labels = batch[1].to(device)
-            outputs = model(inputs)
+            attention_mask = batch[1].to(device)  # attention_mask 추가
+            labels = batch[2].to(device)
+
+            # forward pass
+            outputs = model(input_ids=inputs, attention_mask=attention_mask)
+            
+            # 모델의 출력 크기와 labels 크기를 맞추기 위해 batch 크기를 확인합니다.
+            if outputs.logits.size(0) != labels.size(0):
+                raise ValueError(f"Output size {outputs.logits.size(0)} and labels size {labels.size(0)} don't match.")
+
+            # 예측값
             _, predicted = torch.max(outputs.logits, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
@@ -291,13 +324,18 @@ def train_model(train_texts, train_labels, val_texts, val_labels, epochs=3, batc
     accuracy = 100 * correct / total
     logger.info(f"검증 세트 정확도: {accuracy:.2f}%")
 
+     # 모델 저장
+    logger.info("모델 저장 중...")
+    model.save_pretrained(MODEL_DIR)
+    tokenizer.save_pretrained(TOKENIZER_DIR)
+    logger.info("모델 저장 완료")
+
     return model, tokenizer
 
-
+"""
 def load_model_and_tokenizer(model_dir=MODEL_DIR, tokenizer_dir=TOKENIZER_DIR):
-    """
-    저장된 모델과 토크나이저를 로드합니다.
-    """
+    #저장된 모델과 토크나이저를 로드합니다.
+    
     if not os.path.exists(model_dir) or not os.path.exists(tokenizer_dir):
         logger.info("저장된 모델 또는 토크나이저가 존재하지 않습니다.")
         return None, None
@@ -307,6 +345,22 @@ def load_model_and_tokenizer(model_dir=MODEL_DIR, tokenizer_dir=TOKENIZER_DIR):
         tokenizer = AutoTokenizer.from_pretrained(tokenizer_dir)
         logger.info("모델과 토크나이저 로드 완료")
         return model, tokenizer
+"""
+
+def load_model_and_tokenizer(model_dir=MODEL_DIR, tokenizer_dir=TOKENIZER_DIR):
+    """
+    저장된 모델과 토크나이저를 로드합니다. PyTorch 기반으로 로드합니다.
+    """
+    if not os.path.exists(model_dir) or not os.path.exists(tokenizer_dir):
+        logger.info("저장된 모델 또는 토크나이저가 존재하지 않습니다.")
+        return None, None
+    else:
+        logger.info("저장된 모델과 토크나이저 로드 중...")
+        model = AutoModelForSequenceClassification.from_pretrained(model_dir)  # PyTorch 모델 로드
+        tokenizer = AutoTokenizer.from_pretrained(tokenizer_dir)
+        logger.info("모델과 토크나이저 로드 완료")
+        return model, tokenizer
+
 """
 def predict_url(model, tokenizer):
     
