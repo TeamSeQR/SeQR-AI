@@ -1,5 +1,5 @@
 {
-  "_name_or_path": "ealvaradob/bert-finetuned-phishing",
+  "_name_or_path": "./saved_model",
   "architectures": [
     "BertForSequenceClassification"
   ],
